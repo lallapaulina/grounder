@@ -35,7 +35,18 @@ source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Organize *your own* files as follows (the input filenames match the **BibTeX citation keys**, case-sensitively):
+## Try the demo real quick (offline)
+python grounder.py prepare \
+  --tex demo/manuscript.tex \
+  --bib demo/references.bib \
+  --papers demo/papers \
+  --work demo/work
+
+python grounder.py analyze --work demo/work --offline
+
+
+## Bring your own files
+Organize *your own* files as follows (the input filenames need to match the **BibTeX citation keys**, case-sensitively):
 
 ```text
 my-project/
@@ -142,6 +153,9 @@ Tests cover citation order, comment handling, nested BibTeX fields, local PDF ha
 - Try more sophisticated pdf parsers -- watch out, though!
 - Make output fancy
 - Extract candidate text from .bib `\notes` if manuscript author has been disciplined and entered real quotes there... 
+- Consider whether the fact that we don't already require authors to supply the information grounder seeks to provide alongside data and code and whatnot is a manifestation of epistemic irresponsibility, even if every cited source is real and every author sincere?
+- Consider what I am accountable for when I assert that a certain relationship exists between my own text and the source it cites. Why should my reader have to guess what the relationship is? 
+- Consider that science relies on faith! We trust each other because we have to or we wouldn't make progress, wouldn't be able to build on the work that has already been done. But there are aspects that we don't have to take on faith, where it is not asking too much to say that we should not have to just trust. And the relationship between my own text and the source I cite is such an aspect. Or so I would maybe argue once I've experimented more with this project.
 
 
 ## Caveats
