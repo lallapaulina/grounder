@@ -3,7 +3,7 @@ This repo explores reducing *human*-hallucinated citations, i.e., regular citati
 
 The idea is to work through a manuscript, citation by citation, extracting the text related to the current citation and searching the cited source for supporting text. LLMs do the searching (on pre-processed pdfs stored locally), but the putative supporting text is then extracted deterministically from the local pdfs. 
 
-# Citation Evidence Audit (minimal Python prototype): 
+# Citation Evidence Check (minimal Python prototype): 
 
 A local-first, bare-bones tool for checking what cited research papers **actually say**. It walks a LaTeX manuscript's citations in order and proposes evidence from PDFs you already have. The model **never supplies the quotation**: it returns existing passage IDs, and Python extracts and verifies their text against an archived, SHA-256-checked PDF. The **manuscript author**, not the model, judges whether the cited source truly supports a claim.
 
@@ -12,17 +12,17 @@ A local-first, bare-bones tool for checking what cited research papers **actuall
 Version 0 uses **PyMuPDF** for PDF extraction; the optional model call is an HTTPS request to OpenAI's Responses API.
 
 ## tl;dr
-General idea: 
+To help us stay grounded, this script intends to:
 
-Read a LaTeX manuscript and its bibliography.
+- Read a LaTeX manuscript and its bibliography.
 
-Process locally stored research-paper PDFs.
+- Process locally stored research-paper PDFs.
 
-Use an LLM to identify potential supporting passages.
+- Use an LLM to identify potential supporting passages.
 
-Verify that those passages exist in the stored source text.
+- Verify that those passages exist in the stored source text.
 
-Generate a report for us to review.
+- Generate a report for us to review so we can stay *grounded*!
 
 
 ## Install
@@ -51,7 +51,7 @@ Only PDF files corresponding to cited keys are necessary. Example: `\citep{smith
 ## Run
 
 ```bash
-python audit.py prepare --tex my-project/manuscript.tex \
+python grounder.py prepare --tex my-project/manuscript.tex \
   --bib my-project/references.bib --papers my-project/papers --work work
 ```
 
@@ -65,14 +65,14 @@ python audit.py prepare --tex my-project/manuscript.tex \
 For a free local sanity check (no API key and **no LLM assessment**):
 
 ```bash
-python audit.py analyze --work work --offline
+python grounder.py analyze --work work --offline
 ```
 
 To ask the model to propose passage IDs and explain its *provisional* support assessment:
 
 ```bash
 export OPENAI_API_KEY='YOUR_KEY'  # PowerShell: $env:OPENAI_API_KEY='YOUR_KEY'
-python audit.py analyze --work work --model gpt-5-mini
+python grounder.py analyze --work work --model gpt-5-mini
 ```
 
 **Important:** don't commit API keys. `OPENAI_API_KEY` is read only from your environment. The API sends extracted passage text and manuscript claim text to the model; it does **not** upload complete PDFs. On the server, `store=false` is requested. Read the provider's privacy/data handling terms before using unpublished material. API usage is billed separately from a ChatGPT subscription.
@@ -94,7 +94,7 @@ Do not literally type `<PDF_hash>` or `<claim_hash>`; leave the generated SHA-25
 Then regenerate the report without spending more API tokens:
 
 ```bash
-python audit.py render --work work
+python grounder.py render --work work
 ```
 
 If either the PDF **or the associated claim** changes, previous human approval is flagged **stale** until re-reviewed. The current hashes appear in the HTML report; after genuinely re-reviewing, update the `source_sha256` and/or `claim_sha256` cell to the current value and set the appropriate review decision. Rerun `analyze` if the claim/source changed, because the old model assessment is also stale. If the manuscript itself changed, `prepare` refreshes the auto-detected claim instead of silently reusing an older manual edit. The application re-extracts original PDF text and compares it to indexed text before rendering; any mismatch is a hard error.
@@ -103,9 +103,9 @@ If either the PDF **or the associated claim** changes, previous human approval i
 
 ```bash
 python demo/make_demo.py
-python audit.py prepare --tex demo/manuscript.tex --bib demo/references.bib \
+python grounder.py prepare --tex demo/manuscript.tex --bib demo/references.bib \
   --papers demo/papers --work demo/work
-python audit.py analyze --work demo/work --offline
+python grounder.py analyze --work demo/work --offline
 # Open demo/work/report.html
 ```
 
@@ -138,7 +138,16 @@ pytest -q
 Tests cover citation order, comment handling, nested BibTeX fields, local PDF hashing, true-versus-invented passage IDs, model response caching, manual override, and stale author reviews. Mock model calls mean tests require **no API key**. Includes a mocked HTTPS request test for the model call.
 
 ## Maybe To Do
-Enable multi-file projects, not just single .tex manuscript file
-Try more sophisticated pdf parsers -- watch out, though!
-Make output fancy
-Extract candidate text from .bib `\notes` if manuscript author has been disciplined and entered real quotes there... 
+- Enable multi-file projects, not just single .tex manuscript file
+- Try more sophisticated pdf parsers -- watch out, though!
+- Make output fancy
+- Extract candidate text from .bib `\notes` if manuscript author has been disciplined and entered real quotes there... 
+
+
+## Caveats
+
+1. Certain attributions do not lend themselves to having a limited amount of text extracted as evidence that the source supports the attribution; for instance, book-length arguments exist. Ideally, such a book would state the conclusion of that argument somewhere, and that statement could ground the citation. But sometimes even an LLM with prefect reading comprehension will not find a succinct string to return even if the source *does* support the citation. A null return does not imply that the source does not support the citation. It merely highlights the need for additional analysis.
+
+2. If the manuscript cites a source as having done X, and the cited source says it does X, grounder should surface that claim, but does not have to also find text that shows (rather than says) that the source does X. What the cited paper says is taken at face value. 
+
+Example: A 2015 Hinton et al. paper says "Caruana and his collaborators `[1]` have shown that it is possible to compress the knowledge in an ensemble into a single model which is much easier to deploy..." The Caruana reference is C. Buciluă, R. Caruana, and A. Niculescu-Mizil. Model compression. In *Proceedings of the 12th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, KDD ’06, pages 535–541, New York, NY, USA, 2006. ACM. In *that* paper, we are told "We present a method for “compressing” large, complex ensembles into smaller, faster models, usually without significant loss in performance." grounder does not have to attempt to further ascertain whether the presented method actually does that. What the cited paper says is taken at face value. 
